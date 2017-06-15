@@ -4,6 +4,8 @@ from urllib.parse import urlencode
 
 import json
 
+from utils.data import load_wiki_data
+
 SMT_API = "http://api.smt.futuro.media/alignments/by_twitter_id"
 
 
@@ -28,7 +30,7 @@ def align(uid):
     return candidates
 
 
-def process(row, writer, counter):
+def process(row, writer, counter, wiki_data):
     name = row[0]
     uid = row[1]
     friend_uid = row[2]
@@ -44,6 +46,9 @@ def process(row, writer, counter):
         for candidate in candidates:
             resource_id = candidate['resourceId']
             score = candidate['score']
+
+            if resource_id not in wiki_data:
+                continue
 
             if maxScore < score and score > 0.2:
                 maxScore = score
@@ -71,12 +76,13 @@ def process(row, writer, counter):
 
 
 def __main__():
+    wiki_data = load_wiki_data()
     friends_writer = open('data/friends_aligned.tsv', 'w')
     with open('data/friends.tsv', 'r') as reader:
         counter = Counter()
         for line in reader:
             row = line.split("\t")
-            process(row, friends_writer, counter)
+            process(row, friends_writer, counter, wiki_data)
             friends_writer.flush()
 
     friends_writer.close()

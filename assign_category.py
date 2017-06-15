@@ -1,3 +1,4 @@
+from utils.data import load_wiki_data
 import json
 
 KNOWLEDGE_BASE_API = "http://ganymede.fbk.eu/dbpedia2/sparql"
@@ -51,22 +52,6 @@ class Counter:
 
     def done(self):
         self.first = False
-
-
-def load_wiki_data():
-    data = {}
-    with open('data/en_resolved.tsv', 'r') as reader:
-        counter = 0
-        for line in reader:
-            row = line.split("\t")
-            categories = {}
-            for idx in range(1, len(row), 2):
-                categories[row[idx]] = float(row[idx+1])
-            data[row[0]] = categories
-            counter += 1
-            if counter % 10000 == 0:
-                print("Processed", str(counter))
-    return data
 
 
 def process(row, writer, counter, wiki_data):

@@ -2,6 +2,8 @@ from urllib import request
 from urllib.error import HTTPError
 from urllib.parse import urlencode
 
+import argparse
+
 KNOWLEDGE_BASE_API = "http://ganymede.fbk.eu/dbpedia2/sparql"
 QUERY = """select
   ?relation ?property
@@ -52,36 +54,58 @@ def find_resource(wiki_id):
     return None
 
 
-def process(row, writer, counter):
-    wiki_id = row[0]
+def process(id, row, writer, counter):
+    wiki_id = row[id]
 
     try:
         counter.inc()
-        id = find_resource(wiki_id)
-        if id is None:
+        resolved_id = find_resource(wiki_id)
+        if resolved_id is None:
             return
 
         if not counter.first:
             writer.write('\n')
 
         counter.done()
-        writer.write(id)
-        for value in row[1:]:
-            writer.write('\t')
-            writer.write(value)
+        for idx in range(len(row)):
+            if idx > 0:
+                writer.write('\t')
+            if idx == id:
+                writer.write(resolved_id)
+            else:
+                writer.write(row[idx])
     except HTTPError as e:
         print("Error happened:", e, "Request:", wiki_id)
 
 
-def __main__():
-    friends_writer = open('data/en_resolved.tsv', 'w')
-    with open('data/en.csv', 'r') as reader:
+def __main__(args):
+    print(vars(args))
+    friends_writer = open(args.output, 'w')
+    with open(args.input, 'r') as reader:
         counter = Counter()
         for line in reader:
             row = line.rstrip().split("\t")
-            process(row, friends_writer, counter)
+            process(args.index, row, friends_writer, counter)
             friends_writer.flush()
 
     friends_writer.close()
 
-__main__()
+
+def params():
+    # Parsing parameters
+    parser = argparse.ArgumentParser(description='Resolve wiki IDs against our knowledge base')
+    parser.add_argument('--input', default='data/en.csv',
+                        help='Input file to resolve', metavar='#')
+    parser.add_argument('--index', default='0',
+                        help='Index in the tab separated file to resolve', metavar='#')
+    args = parser.parse_args()
+    args.index = int(args.index)
+    if args.input.endswith(".csv") or args.input.endswith(".tsv"):
+        args.output = args.input[:-4]
+    else:
+        args.output = args.input
+    args.output = args.output + "_resolved.tsv"
+
+    return args
+
+__main__(params())
