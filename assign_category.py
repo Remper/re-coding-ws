@@ -1,14 +1,6 @@
 from utils.data import load_wiki_data
 import json
 
-KNOWLEDGE_BASE_API = "http://ganymede.fbk.eu/dbpedia2/sparql"
-QUERY = """select
-  ?relation ?property
-where {
- ?property ?relation <http://en.wikipedia.org/wiki/:id>
-}
-group by ?property ?relation"""
-
 
 class Counter:
     def __init__(self):
@@ -91,7 +83,7 @@ def process(row, writer, counter, wiki_data):
             top_score = categories[category]
             top_cat = category
 
-    print("(%5d)" % counter.value, cur, "->", top_cat, str(top_score))
+    print("(%5d) %s -> %s %.2f" % (counter.value, cur, top_cat, top_score))
 
 
 def __main__():

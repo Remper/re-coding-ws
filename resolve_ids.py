@@ -4,13 +4,8 @@ from urllib.parse import urlencode
 
 import argparse
 
-KNOWLEDGE_BASE_API = "http://ganymede.fbk.eu/dbpedia2/sparql"
-QUERY = """select
-  ?relation ?property
-where {
- ?property ?relation <http://en.wikipedia.org/wiki/:id>
-}
-group by ?property ?relation"""
+from utils.queries import KNOWLEDGE_BASE_API, RESOURCE_QUERY
+
 PROPERTY_WHITELIST = ["http://xmlns.com/foaf/0.1/isPrimaryTopicOf"]
 
 
@@ -27,7 +22,7 @@ class Counter:
 
 
 def find_resource(wiki_id):
-    url = KNOWLEDGE_BASE_API + '?' + urlencode({'accept': 'text/csv', 'query': QUERY.replace(":id", wiki_id)})
+    url = KNOWLEDGE_BASE_API + '?' + urlencode({'accept': 'text/csv', 'query': RESOURCE_QUERY.replace(":id", wiki_id)})
 
     try:
         with request.urlopen(url) as raw:

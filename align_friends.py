@@ -6,8 +6,7 @@ from urllib.parse import urlencode
 import json
 
 from utils.data import load_wiki_data, load_gold_data
-
-SMT_API = "http://api.smt.futuro.media/alignments/by_twitter_id"
+from utils.queries import RESOURCES_BY_NAME_QUERY, SMT_API, KNOWLEDGE_BASE_API, SMT_API_SIMILARITY
 
 
 class Counter:
@@ -16,6 +15,7 @@ class Counter:
         self.first = True
         self.wiki_data = None
         self.gold_data = None
+        self.dbpedia = args.dbpedia
         if args.whitelist:
             self.wiki_data = load_wiki_data()
         if args.gold:
@@ -40,8 +40,39 @@ def align(uid):
     return candidates
 
 
-def assign_candidate_sl(counter, friend_uid):
-    candidates = align(int(friend_uid))
+def align_via_dbpedia(friend_name, friend_id):
+    url = KNOWLEDGE_BASE_API + '?' + urlencode({'accept': 'text/csv', 'query': RESOURCES_BY_NAME_QUERY.replace(":res_name", friend_name)})
+
+    try:
+        with request.urlopen(url) as raw:
+            raw = raw.read().decode('utf-8').rstrip()
+            raw_candidates = raw.split('\n')
+    except HTTPError as e:
+        print("Error happened:", e, "Request:", friend_name)
+        return []
+
+    candidates = []
+    for candidate in raw_candidates[1:]:
+        candidate = candidate.rstrip()
+
+        try:
+            with request.urlopen(SMT_API_SIMILARITY + '?' + urlencode({'resource': candidate, 'uid': friend_id})) as raw:
+                score = float(json.loads(raw.read().decode('utf-8'))['data'])
+        except HTTPError as e:
+            print("Error happened:", e, "Request:", friend_name)
+            score = 0.0
+        candidates.append({
+            "resourceId": candidate,
+            "score": score
+        })
+    return candidates
+
+
+def assign_candidate_sl(counter, friend_uid, friend_name):
+    if counter.dbpedia:
+        candidates = align_via_dbpedia(friend_name, friend_uid)
+    else:
+        candidates = align(friend_uid)
 
     maxScore = 0
     maxCandidate = None
@@ -79,7 +110,7 @@ def process(row, writer, counter):
     try:
         counter.inc()
         if counter.gold_data is None:
-            maxScore, maxCandidate = assign_candidate_sl(counter, friend_uid)
+            maxScore, maxCandidate = assign_candidate_sl(counter, int(friend_uid), friend_name)
         else:
             maxScore, maxCandidate = assign_candidate_gold(counter, friend_handler)
 
@@ -122,6 +153,7 @@ def params():
     parser = argparse.ArgumentParser(description='Align friends to DBpedia entities')
     parser.add_argument('--whitelist', action='store_true', help='Filter candidates against the whitelist (en.csv)')
     parser.add_argument('--gold', action='store_true', help='Align using the gold standard instead of SocialLink')
+    parser.add_argument('--dbpedia', action='store_true', help='Use dbpedia endpoint + LSA&BOW to acquire and score candidates')
     args = parser.parse_args()
 
     return args
