@@ -64,7 +64,7 @@ def get_friends(uid):
 def resolve_friends(user):
     for raw_friend in get_friends(user.id):
         friend = User.get_user(raw_friend['id'], raw_friend['name'], raw_friend['screenName'])
-        user.add_friend(friend)
+        user.friends.add(friend)
 
 
 def cross_entropy(y_true, y_pred, eps=1e-7):

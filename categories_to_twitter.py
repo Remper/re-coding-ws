@@ -41,8 +41,6 @@ gold = load_gold_data()
 
 def align_entity(entity):
     if entity in gold:
-        with conn.cursor() as cursor:
-            cursor.execute(QUERY, (entity,))
         return gold[entity]
 
     with conn.cursor() as cursor:

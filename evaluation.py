@@ -1,5 +1,5 @@
 from flatten.user2cat import Dictionary, User2Cat
-from flatten.flatten import Flatten
+from flatten.flatten import *
 from time import time
 from os import path
 from utils import data
@@ -12,21 +12,22 @@ watch = time()
 dictionary = Dictionary.restore_from_data_folder('data')
 print("Done in %.2f seconds" % (time() - watch))
 
-# Load gold standard
-watch = time()
-gold = data.load_gold_data()
-print("Done in %.2f seconds" % (time() - watch))
-
 # Initialise user2cat
-user2cat = User2Cat(dictionary, gold)
+user2cat = User2Cat(dictionary)
 
-# Initialise flatten
-flatten = Flatten(user2cat)
+# Initialise flattens
+flattens = [
+    RandomFlatten(user2cat),
+    GreedyFlatten(user2cat)
+]
 
 # Total evaluation values
-avg_changes = 0.0
 avg_old_loss = 0.0
-avg_new_loss = 0.0
+avg_changes = {}
+avg_new_loss = {}
+for flatten in flattens:
+    avg_new_loss[flatten.__class__.__name__] = 0.0
+    avg_changes[flatten.__class__.__name__] = 0.0
 
 # Run the entire pipeline for a subset of samples
 with open(path.join('data', 'alignments.tsv'), 'r') as reader:
@@ -54,26 +55,31 @@ with open(path.join('data', 'alignments.tsv'), 'r') as reader:
         print("[%3d] Cat dist: %s for user %s (@%s)" % (counter, str(categories), user.name, user.screen_name))
 
         # Flattening the distribution
-        updated_user, changes = flatten.update(user)
-        updated_categories = user2cat.categorize(updated_user)
-
-        print("[%3d] Upd dist: %s for user %s (@%s)" % (counter, str(updated_categories), updated_user.name, updated_user.screen_name))
+        results = []
+        for flatten in flattens:
+            updated_user, changes = flatten.update(user)
+            results.append((user2cat.categorize(updated_user), changes, flatten.__class__.__name__))
 
         # Evaluation
         old_loss = data.compute_error(categories)
-        new_loss = data.compute_error(updated_categories)
-        print("[%3d] Old diff from uniform: %.3f" % (counter, old_loss))
-        print("[%3d] New diff from uniform: %.3f" % (counter, new_loss))
-        print("[%3d] Friends suggested: %d" % (counter, changes))
-
-        avg_changes += changes
         avg_old_loss += old_loss
-        avg_new_loss += new_loss
-avg_changes /= counter
+        print("[%3d] Old diff from uniform: %.3f" % (counter, old_loss))
+        for updated_categories, changes, name in results:
+            new_loss = data.compute_error(updated_categories)
+            print("[%3d] %s" % (counter, name))
+            print("[%3d]    Diff from uniform: %.3f" % (counter, new_loss))
+            print("[%3d]    Friends suggested: %d" % (counter, changes))
+            avg_new_loss[name] += new_loss
+            avg_changes[name] += changes
+
 avg_old_loss /= counter
-avg_new_loss /= counter
+for flatten in flattens:
+    avg_new_loss[flatten.__class__.__name__] /= counter
+    avg_changes[flatten.__class__.__name__] /= counter
 
 print("Final evaluation: ")
-print(" Avg. new friends: %.2f" % avg_changes)
 print(" Avg. old loss: %.2f" % avg_old_loss)
-print(" Avg. new loss: %.2f" % avg_new_loss)
+for flatten in flattens:
+    name = flatten.__class__.__name__
+    print(" [%s] Avg. new loss: %.2f" % (name, avg_new_loss[name]))
+    print(" [%s] Avg. new friends: %.2f" % (name, avg_changes[name]))

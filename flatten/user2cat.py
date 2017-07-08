@@ -24,7 +24,7 @@ class Dictionary:
                 cat_dict[cat] = len(cat_index)
                 cat_index.append(cat)
 
-        with open(path.join(folder, 'en_resolved.tsv'), 'r') as reader:
+        with open(path.join(folder, 'en_resolved_final.tsv'), 'r') as reader:
             counter = 0
             for line in reader:
                 row = line.rstrip().split("\t")
@@ -54,7 +54,7 @@ class User:
     """
     def __init__(self, id, name=None, screen_name=None):
         self.id = id
-        self.friends = []
+        self.friends = set()
         self.name = "unknown"
         self.screen_name = "unknown"
         if name is not None:
@@ -62,14 +62,20 @@ class User:
         if screen_name is not None:
             self.screen_name = screen_name
 
-    def add_friend(self, friend):
-        self.friends.append(friend)
+    def __repr__(self):
+        return "User(%s)" % self.screen_name
 
-    def has_friend(self, id):
-        for friend in self.friends:
-            if (isinstance(id, int) and friend.id == id) or friend.screen_name == id:
-                return True
-        return False
+    def __eq__(self, other):
+        if isinstance(other, User):
+            return (self.id == other.id) or (self.screen_name == other.screen_name)
+        else:
+            return False
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    def __hash__(self):
+        return hash(self.__repr__())
 
     user_rep = {}
 
@@ -87,32 +93,35 @@ class User2Cat:
     """
     Takes the user and transforms it to the set of categories
     """
-    def __init__(self, dictionary, gold):
+    def __init__(self, dictionary):
         self.dictionary = dictionary
-        self.gold = gold
 
     def categorize(self, user):
-        # Resolving friends against gold standard
-        resolved_friends = []
-        for friend in user.friends:
-            if friend.screen_name in self.gold:
-                resolved_friends.append(self.gold[friend.screen_name])
+        # Computing raw sum
+        categories, num_friends = self.compute_raw_sum(user)
+        if num_friends == 0:
+            return categories
 
+        # Normalising
+        categories /= num_friends
+
+        return categories
+
+    def compute_raw_sum(self, user):
         # Retrieving category list from dictionary
         categorized_friends = []
-        for friend in resolved_friends:
-            if friend in self.dictionary.dictionary:
-                idx = self.dictionary.dictionary[friend]
+        for friend in user.friends:
+            if friend.screen_name in self.dictionary.dictionary:
+                idx = self.dictionary.dictionary[friend.screen_name]
                 friend_cats = self.dictionary.index[idx]
                 categorized_friends.append(friend_cats)
 
         if len(categorized_friends) == 0:
-            return np.zeros(self.dictionary.index.shape[1])
+            return np.zeros(self.dictionary.index.shape[1]), 0
 
         categories = np.sum(categorized_friends, axis=0)
-        categories /= len(categorized_friends)
 
-        return categories
+        return categories, len(categorized_friends)
 
     def lookup(self, user):
         pass
