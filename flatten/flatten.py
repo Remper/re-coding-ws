@@ -13,8 +13,8 @@ class Flatten:
         self.user2cat = user2cat
 
     @staticmethod
-    def _get_top_categories(categories):
-        return np.argsort(categories)[-15:][::-1]
+    def _get_top_categories(categories, n=15):
+        return np.argsort(categories)[-n:][::-1]
 
     def compute_category_similarity(self, top_categories, current_categories):
         new_top_categories = Flatten._get_top_categories(current_categories)
@@ -74,7 +74,7 @@ class GreedyFlatten(Flatten):
     def _get_best_friend_scores(self, user):
         # Get the unnormalised sum of categories
         raw_categories, num_friends = self.user2cat.compute_raw_sum(user)
-        expected_probability = 1.0 / len(raw_categories)
+        categories_length = len(raw_categories)
 
         # Getting all possible variations of the new friend list
         raw_categories = self.user2cat.dictionary.index + raw_categories
@@ -83,10 +83,11 @@ class GreedyFlatten(Flatten):
         # Normalizing using the new total
         raw_categories /= num_friends
 
-        # Computing cross entropy row-wise
-        eps = 1e-7
-        raw_categories = np.multiply(np.log2(np.clip(raw_categories, eps, 1 - eps)), expected_probability)
-        raw_categories = -np.sum(raw_categories, axis=1)
+        # Computing KL-divergence row-wise
+        #eps = 1e-7
+        #raw_categories = np.multiply(np.log2(np.clip(raw_categories, eps, 1 - eps)), 1 / categories_length)
+        #raw_categories = -np.sum(raw_categories, axis=1) - np.log(categories_length)
+        raw_categories = compute_error(raw_categories)
 
         # Finding the best friend
         return raw_categories
@@ -110,7 +111,7 @@ class GreedyFlatten(Flatten):
         user.friends.add(self._resolve_friend(index))
 
         # Found the one that is better than baseline
-        if best_cur_score < best_total_score - 0.1   :
+        if best_cur_score < best_total_score - 0.01:
             return True
 
         # Didn't found one

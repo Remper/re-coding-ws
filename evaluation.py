@@ -5,6 +5,8 @@ from os import path
 from utils import data
 import numpy as np
 
+from utils.data import best_score_diff
+
 SAMPLES = 100
 
 # Load a dictionary with categorical data
@@ -53,6 +55,8 @@ with open(path.join('data', 'alignments.tsv'), 'r') as reader:
             break
 
         print("[%3d] Cat dist: %s for user %s (@%s)" % (counter, str(categories), user.name, user.screen_name))
+        top_category, best, diff = best_score_diff(categories, Flatten._get_top_categories(categories, 2))
+        print("[%3d] Top category: %s (p:%.2f, d:%.2f) " % (counter, dictionary.cat_index[top_category], best, diff))
 
         # Flattening the distribution
         results = []
@@ -66,7 +70,9 @@ with open(path.join('data', 'alignments.tsv'), 'r') as reader:
         print("[%3d] Old diff from uniform: %.3f" % (counter, old_loss))
         for updated_categories, changes, name in results:
             new_loss = data.compute_error(updated_categories)
+            top_category, best, diff = best_score_diff(updated_categories, Flatten._get_top_categories(updated_categories, 2))
             print("[%3d] %s" % (counter, name))
+            print("[%3d]    Top category: %s (p:%.2f, d:%.2f) " % (counter, dictionary.cat_index[top_category], best, diff))
             print("[%3d]    Diff from uniform: %.3f" % (counter, new_loss))
             print("[%3d]    Friends suggested: %d" % (counter, changes))
             avg_new_loss[name] += new_loss

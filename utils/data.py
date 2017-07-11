@@ -8,6 +8,7 @@ from time import sleep
 import json
 import numpy as np
 
+
 def load_wiki_data():
     print("Loading category information")
     data = {}
@@ -17,13 +18,18 @@ def load_wiki_data():
             row = line.rstrip().split("\t")
             categories = {}
             for idx in range(1, len(row), 2):
-                categories[row[idx]] = float(row[idx+1])
+                categories[row[idx]] = float(row[idx + 1])
             data[row[0]] = categories
             counter += 1
             if counter % 100000 == 0:
-                print("Processed %.1fm pages" % (float(counter)/1000000))
+                print("Processed %.1fm pages" % (float(counter) / 1000000))
     print("Done (%d)" % counter)
     return data
+
+
+def best_score_diff(categories, scores):
+    best_score = categories[scores[0]]
+    return scores[0], best_score, best_score - categories[scores[1]]
 
 
 def load_gold_data():
@@ -38,7 +44,7 @@ def load_gold_data():
             row = line.rstrip().split(",")
             data[row[1]] = row[0]
             if counter % 10000 == 0:
-                print("Processed %.0fk alignments" % (float(counter)/1000))
+                print("Processed %.0fk alignments" % (float(counter) / 1000))
     print("Done (%d)" % counter)
     return data
 
@@ -68,9 +74,24 @@ def resolve_friends(user):
 
 
 def cross_entropy(y_true, y_pred, eps=1e-7):
-    y_pred = np.clip(y_pred, eps, 1 - eps)
-    return - (np.sum(y_true * np.log2(y_pred)))
+    y_pred = np.clip(y_pred, eps, 1)
+    return - np.sum(y_true * np.log2(y_pred), axis=len(y_pred.shape) - 1)
+
+
+def kl_divergence(y_true, y_pred, eps=1e-7):
+    y_pred = np.clip(y_pred, eps, 1)
+    y_true = np.clip(y_true, eps, 1)
+    return - np.sum(y_true * np.log2(y_pred), axis=len(y_pred.shape) - 1) \
+           + np.sum(y_true * np.log2(y_true), axis=len(y_pred.shape) - 1)
+
+
+def kl_divergence_scalar(y_pred, eps=1e-7):
+    y_pred = np.clip(y_pred, eps, 1)
+    last_dim = len(y_pred.shape)-1
+    num_categories = y_pred.shape[last_dim]
+    true_prob = 1.0 / num_categories
+    return - np.sum(np.multiply(true_prob, np.log2(y_pred)), axis=last_dim) - np.log2(num_categories)
 
 
 def compute_error(categories):
-    return cross_entropy(np.full_like(categories, 1.0/len(categories)), categories)
+    return kl_divergence_scalar(categories)

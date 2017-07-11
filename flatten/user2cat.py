@@ -1,6 +1,8 @@
 import numpy as np
 from os import path
 
+from sklearn.utils.extmath import softmax
+
 
 class Dictionary:
     """
@@ -29,10 +31,19 @@ class Dictionary:
             for line in reader:
                 row = line.rstrip().split("\t")
 
+                # Reading categories data
                 categories = np.zeros(len(cat_index), dtype=np.float16)
                 for idx in range(1, len(row), 2):
                     categories[cat_dict[row[idx]]] = float(row[idx+1])
 
+                # Normalising category values
+                non_zero_idx = np.nonzero(categories)
+                max_value = np.max(categories)
+                categories[non_zero_idx] -= max_value
+                norm_factor = np.sum(np.exp(categories[non_zero_idx]))
+                categories[non_zero_idx] = np.exp(categories[non_zero_idx]) / norm_factor
+
+                # Storing into the dictionary
                 dictionary[row[0]] = len(index)
                 dictionary[len(index)] = row[0]
                 index.append(categories)
