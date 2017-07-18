@@ -29,6 +29,9 @@ class JointFlatten(Flatten):
         return True
 
     def _define_model(self, dictionary):
+        learning_rate = 0.1
+        alpha = tf.constant(0.009, dtype=tf.float32, name='alpha')
+
         mask_size = dictionary.shape[0]
 
         # Loading dictionary as constant
@@ -38,10 +41,9 @@ class JointFlatten(Flatten):
         self._bin_old_friends = tf.placeholder(dtype=tf.bool, shape=(mask_size, ))
         old_friends = tf.select(self._bin_old_friends, *self._pos_zero_like(self._bin_old_friends))
 
-        learning_rate = 0.1
         with tf.variable_scope('optimisation_params') as vs:
             w = tf.get_variable('w', shape=(mask_size, ),
-                                initializer=tf.constant_initializer(learning_rate),
+                                initializer=tf.random_normal_initializer(),
                                 trainable=True)
         tf.summary.histogram('weights', w)
 
@@ -54,9 +56,9 @@ class JointFlatten(Flatten):
             total_friends = tf.clip_by_value(raw_total_friends, 0, 1, name='total_friends')
 
         # Saving objective tensor
-        self._J = self._objective(old_friends, total_friends, 0.1)
+        self._J = self._objective(old_friends, total_friends, alpha)
 
-        optimizer = tf.train.GradientDescentOptimizer(learning_rate=learning_rate)
+        optimizer = tf.train.AdadeltaOptimizer(learning_rate=learning_rate)
         self._global_step = tf.Variable(0, name='global_step', trainable=False)
 
         # Compute gradiends up to binarization
@@ -81,9 +83,9 @@ class JointFlatten(Flatten):
             amount_total_friends = tf.reduce_sum(total_friends, name='amount_total_friends')
             amount_old_friends = tf.reduce_sum(old_friends, name='amount_old_friends')
             tf.summary.scalar('amount_total_friends', amount_total_friends)
-            fr_obj = alpha * (amount_total_friends - amount_old_friends)
-            D =  - tf.log(n) - tf.reduce_mean(tf.log(categories)) - tf.log(n)
-            J = D + fr_obj
+            fr_obj = tf.mul(alpha, (amount_total_friends - amount_old_friends), name='fr_obj')
+            D = tf.add(- tf.log(n, name='ytlogyt'), - tf.reduce_mean(tf.log(categories), name='ytlogyp'), name='D')
+            J = tf.add(D, fr_obj, name='J')
         tf.summary.scalar('D', D)
         tf.summary.scalar('fr_obj', fr_obj)
         tf.summary.scalar('J', J)
@@ -91,7 +93,10 @@ class JointFlatten(Flatten):
         return J
 
     def _categories(self, friends):
-        return tf.matmul(tf.reshape(friends, [1, -1]), self._F) / tf.reduce_sum(friends)
+        not_cool = tf.reshape(friends, [1, -1])
+        tf.summary.histogram('friends', friends)
+        tf.summary.histogram('friends_not_cool', not_cool)
+        return tf.matmul(not_cool, self._F) / tf.reduce_sum(friends)
 
     def _optimise(self, friends):
         with tf.Session() as session:
@@ -105,17 +110,18 @@ class JointFlatten(Flatten):
             J = session.run(self._J, feed_dict={self._bin_old_friends: friends})
             old_J = J + 100.0
             step = 0
-            while old_J - J > 0.01 or step < 10000:
+            while old_J - J > 0.005:
                 old_J = J
-                for idx in range(0, 5):
+                for idx in range(0, 100):
                     _, J, summary, step = session.run([self._min_op, self._J, merged, self._global_step],
                                                                    feed_dict={self._bin_old_friends: friends})
+                    summary_writer.add_summary(summary, global_step=step)
 
                 if step % 1000 == 0:
-                    print("iter: %d loss: %.2f" % (step, J))
+                    print("iter: %3.1fk loss: %.2f" % (float(step)/1000, J))
 
                 # Write summaries
-                summary_writer.add_summary(summary, global_step=step)
+                # summary_writer.add_summary(summary, global_step=step)
 
             print("Total iterations: %d" % step)
             new_friends = session.run(self._new_friends)
