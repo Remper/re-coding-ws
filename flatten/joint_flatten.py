@@ -29,8 +29,8 @@ class JointFlatten(Flatten):
         return True
 
     def _define_model(self, dictionary):
-        learning_rate = 0.1
-        alpha = tf.constant(0.009, dtype=tf.float32, name='alpha')
+        learning_rate = 0.01
+        alpha = tf.constant(0.001, dtype=tf.float32, name='alpha')
 
         mask_size = dictionary.shape[0]
 
@@ -43,7 +43,7 @@ class JointFlatten(Flatten):
 
         with tf.variable_scope('optimisation_params') as vs:
             w = tf.get_variable('w', shape=(mask_size, ),
-                                initializer=tf.random_normal_initializer(),
+                                initializer=tf.random_normal_initializer(mean=learning_rate, stddev=learning_rate),
                                 trainable=True)
         tf.summary.histogram('weights', w)
 
@@ -93,10 +93,8 @@ class JointFlatten(Flatten):
         return J
 
     def _categories(self, friends):
-        not_cool = tf.reshape(friends, [1, -1])
-        tf.summary.histogram('friends', friends)
-        tf.summary.histogram('friends_not_cool', not_cool)
-        return tf.matmul(not_cool, self._F) / tf.reduce_sum(friends)
+        reshaped_friends = tf.reshape(friends, [1, -1])
+        return tf.matmul(reshaped_friends, self._F) / tf.reduce_sum(friends)
 
     def _optimise(self, friends):
         with tf.Session() as session:
@@ -110,7 +108,7 @@ class JointFlatten(Flatten):
             J = session.run(self._J, feed_dict={self._bin_old_friends: friends})
             old_J = J + 100.0
             step = 0
-            while old_J - J > 0.005:
+            while old_J - J > 0.001:
                 old_J = J
                 for idx in range(0, 100):
                     _, J, summary, step = session.run([self._min_op, self._J, merged, self._global_step],
