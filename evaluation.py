@@ -1,3 +1,4 @@
+from flatten.joint_flatten import JointFlatten
 from flatten.user2cat import Dictionary, User2Cat
 from flatten.flatten import *
 from time import time
@@ -19,8 +20,9 @@ user2cat = User2Cat(dictionary)
 
 # Initialise flattens
 flattens = [
-    RandomFlatten(user2cat),
-    GreedyFlatten(user2cat)
+    #RandomFlatten(user2cat),
+    GreedyFlatten(user2cat),
+    JointFlatten(user2cat)
 ]
 
 # Total evaluation values

@@ -38,13 +38,13 @@ class Flatten:
         top_categories = Flatten._get_top_categories(current_categories)
         changes = 0
         while changes < 100:
-            self._propose(updated_user, current_categories)
+            stop = self._propose(updated_user, current_categories)
             delta = len(updated_user.friends) - amount_friends
             amount_friends = len(updated_user.friends)
-            if delta == 0:
+            changes += delta
+            if delta == 0 or (stop is not None and stop):
                 break
 
-            changes += delta
             current_categories = self.user2cat.categorize(updated_user)
 
         return updated_user, changes
@@ -74,7 +74,6 @@ class GreedyFlatten(Flatten):
     def _get_best_friend_scores(self, user):
         # Get the unnormalised sum of categories
         raw_categories, num_friends = self.user2cat.compute_raw_sum(user)
-        categories_length = len(raw_categories)
 
         # Getting all possible variations of the new friend list
         raw_categories = self.user2cat.dictionary.index + raw_categories
@@ -84,9 +83,6 @@ class GreedyFlatten(Flatten):
         raw_categories /= num_friends
 
         # Computing KL-divergence row-wise
-        #eps = 1e-7
-        #raw_categories = np.multiply(np.log2(np.clip(raw_categories, eps, 1 - eps)), 1 / categories_length)
-        #raw_categories = -np.sum(raw_categories, axis=1) - np.log(categories_length)
         raw_categories = compute_error(raw_categories)
 
         # Finding the best friend

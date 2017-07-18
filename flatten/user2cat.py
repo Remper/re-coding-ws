@@ -44,6 +44,7 @@ class Dictionary:
                 categories[non_zero_idx] = np.exp(categories[non_zero_idx]) / norm_factor
 
                 # Storing into the dictionary
+                row[0] = row[0].lower()
                 dictionary[row[0]] = len(index)
                 dictionary[len(index)] = row[0]
                 index.append(categories)
