@@ -29,7 +29,7 @@ class JointFlatten(Flatten):
         return True
 
     def _define_model(self, dictionary):
-        learning_rate = 0.01
+        learning_rate = 0.001
         alpha = tf.constant(0.001, dtype=tf.float32, name='alpha')
 
         mask_size = dictionary.shape[0]
@@ -43,7 +43,7 @@ class JointFlatten(Flatten):
 
         with tf.variable_scope('optimisation_params') as vs:
             w = tf.get_variable('w', shape=(mask_size, ),
-                                initializer=tf.random_normal_initializer(mean=learning_rate, stddev=learning_rate),
+                                initializer=tf.random_normal_initializer(mean=2*learning_rate, stddev=learning_rate),
                                 trainable=True)
         tf.summary.histogram('weights', w)
 
