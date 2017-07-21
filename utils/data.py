@@ -50,7 +50,7 @@ def load_gold_data():
 
 
 def user_from_alignments(row):
-    return User.get_user(int(row[1]), row[3], row[2])
+    return User.get_user(int(row[1]), row[3], row[2].lower())
 
 
 def get_friends(uid):
@@ -90,7 +90,7 @@ def kl_divergence_scalar(y_pred, eps=1e-7):
     last_dim = len(y_pred.shape)-1
     num_categories = y_pred.shape[last_dim]
     true_prob = 1.0 / num_categories
-    return - np.sum(np.multiply(true_prob, np.log2(y_pred)), axis=last_dim) - np.log2(num_categories)
+    return - np.sum(np.multiply(true_prob, np.log(y_pred)), axis=last_dim) - np.log(num_categories)
 
 
 def compute_error(categories):

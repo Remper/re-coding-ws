@@ -82,19 +82,21 @@ class JointFlatten(Flatten):
         with tf.name_scope('objective') as scope:
             amount_total_friends = tf.reduce_sum(total_friends, name='amount_total_friends')
             amount_old_friends = tf.reduce_sum(old_friends, name='amount_old_friends')
-            tf.summary.scalar('amount_total_friends', amount_total_friends)
             fr_obj = tf.mul(alpha, (amount_total_friends - amount_old_friends), name='fr_obj')
             D = tf.add(- tf.log(n, name='ytlogyt'), - tf.reduce_mean(tf.log(categories), name='ytlogyp'), name='D')
             J = tf.add(D, fr_obj, name='J')
-        tf.summary.scalar('D', D)
-        tf.summary.scalar('fr_obj', fr_obj)
-        tf.summary.scalar('J', J)
+
+            tf.summary.scalar('amount_total_friends', amount_total_friends)
+            tf.summary.scalar('D', D)
+            tf.summary.scalar('fr_obj', fr_obj)
+            tf.summary.scalar('J', J)
 
         return J
 
     def _categories(self, friends):
         reshaped_friends = tf.reshape(friends, [1, -1])
-        return tf.matmul(reshaped_friends, self._F) / tf.reduce_sum(friends)
+        categories = tf.matmul(reshaped_friends, self._F) / tf.reduce_sum(friends)
+        return tf.reshape(categories, [-1])
 
     def _optimise(self, friends):
         with tf.Session() as session:
@@ -117,9 +119,6 @@ class JointFlatten(Flatten):
 
                 if step % 1000 == 0:
                     print("iter: %3.1fk loss: %.2f" % (float(step)/1000, J))
-
-                # Write summaries
-                # summary_writer.add_summary(summary, global_step=step)
 
             print("Total iterations: %d" % step)
             new_friends = session.run(self._new_friends)
