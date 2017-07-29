@@ -1,2 +1,2 @@
 # re-coding-ws
-Scripts for the re-coding workshop
+Scripts for the Re-coding Black Mirror workshop
