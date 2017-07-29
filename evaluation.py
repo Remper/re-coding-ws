@@ -8,7 +8,7 @@ import numpy as np
 
 from utils.data import best_score_diff
 
-SAMPLES = 100
+SAMPLES = 400
 
 # Load a dictionary with categorical data
 watch = time()
@@ -24,6 +24,13 @@ flattens = [
     GreedyFlatten(user2cat),
     JointFlatten(user2cat)
 ]
+# Figure 2
+#for changes in range(20, 1001, 10):
+#    flattens.append(RandomFlatten(user2cat, changes))
+
+# Figure 3
+#for alpha in [0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1.0, 2.0, 3.0, 4.0]:
+#    flattens.append(GreedyFlatten(user2cat, 1000, alpha))
 
 # Total evaluation values
 avg_old_loss = 0.0
@@ -37,7 +44,7 @@ top10_prec = {}
 top15_prec = {}
 
 for flatten in flattens:
-    name = flatten.__class__.__name__
+    name = flatten
     avg_new_loss[name] = 0.0
     avg_changes[name] = 0.0
     avg_diff[name] = 0.0
@@ -79,7 +86,7 @@ with open(path.join('data', 'alignments.tsv'), 'r') as reader:
         results = []
         for flatten in flattens:
             updated_user, changes = flatten.update(user)
-            results.append((user2cat.categorize(updated_user), changes, flatten.__class__.__name__))
+            results.append((user2cat.categorize(updated_user), changes, flatten))
 
         # Evaluation
         old_loss = data.compute_error(categories)
@@ -100,6 +107,7 @@ with open(path.join('data', 'alignments.tsv'), 'r') as reader:
             print("[%3d]    Diff from uniform: %.3f" % (counter, new_loss))
             print("[%3d]    Friends suggested: %d" % (counter, changes))
             print("[%3d]    Intersects Top5: %d Top10: %d Top15: %d" % (counter, top5_int, top10_int, top15_int))
+            # print("[%3d]    Cat dist: %s" % (counter, str(updated_categories)))
             avg_new_loss[name] += new_loss
             avg_changes[name] += changes
             avg_diff[name] += diff
@@ -107,7 +115,7 @@ with open(path.join('data', 'alignments.tsv'), 'r') as reader:
 avg_old_loss /= counter
 avg_diff_base /= counter
 for flatten in flattens:
-    name = flatten.__class__.__name__
+    name = flatten
     avg_new_loss[name] /= counter
     avg_changes[name] /= counter
     avg_diff[name] /= counter
@@ -119,7 +127,7 @@ print("Final evaluation: ")
 print(" Avg. old loss: %.2f" % avg_old_loss)
 print(" Avg. old avg diff: %.2f" % avg_diff_base)
 for flatten in flattens:
-    name = flatten.__class__.__name__
+    name = flatten
     print(" [%s] Avg. new loss: %.2f" % (name, avg_new_loss[name]))
     print(" [%s] Avg. new friends: %.2f" % (name, avg_changes[name]))
     print(" [%s] Avg. diff: %.2f" % (name, avg_diff[name]))
