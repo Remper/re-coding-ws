@@ -9,8 +9,12 @@ class Flatten:
     Takes the list of followees and proposes an updated one
     """
 
-    def __init__(self, user2cat):
+    def __init__(self, user2cat, changes=100):
         self.user2cat = user2cat
+        self.changes = changes
+
+    def __str__(self):
+        return "%s(%d)" % (self.__class__.__name__, self.changes)
 
     @staticmethod
     def _get_top_categories(categories, n=15):
@@ -37,7 +41,7 @@ class Flatten:
         # Randomly adding new followers until the top 15 categories are phased out
         top_categories = Flatten._get_top_categories(current_categories)
         changes = 0
-        while changes < 100:
+        while changes < self.changes:
             stop = self._propose(updated_user, current_categories)
             delta = len(updated_user.friends) - amount_friends
             amount_friends = len(updated_user.friends)
@@ -70,6 +74,13 @@ class GreedyFlatten(Flatten):
     """
     Proposes the updated list of followees by adding the best cross-entropy-reducing candidate one at the time
     """
+
+    def __init__(self, user2cat, changes=100, alpha=0.01):
+        super().__init__(user2cat, changes)
+        self.alpha = alpha
+
+    def __str__(self):
+        return "%s(%d, %f)" % (self.__class__.__name__, self.changes, self.alpha)
 
     def _get_best_friend_scores(self, user):
         # Get the unnormalised sum of categories
@@ -107,7 +118,7 @@ class GreedyFlatten(Flatten):
         user.friends.add(self._resolve_friend(index))
 
         # Found the one that is better than baseline
-        if best_cur_score < best_total_score - 0.01:
+        if best_cur_score < best_total_score - self.alpha:
             return True
 
         # Didn't found one
