@@ -17,6 +17,10 @@ about that passive user and his interests.
 
 The code in this repository covers the extraction of ISWC authors, mapping the user to category distributon, a number of concealing approaches explained in our paper and the evaluation pipelines to validate our system.
 
+### Data
+
+[Here](http://remper.ru/public/wiki_categories.csv.gz) you can find a category distribution for each Wikipedia page that we have used in our paper to produce user interests.
+
 ### Read the paper
 
 The latest version of our paper can be found [here](paper.pdf)
